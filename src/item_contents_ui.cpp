@@ -183,7 +183,7 @@ void item_contents_ui::execute()
             act_descs.emplace_back( ctxt.get_desc( act, txt, input_context::allow_all_keys,
                                                    inline_fmt, separate_fmt ) );
         };
-        add_action_desc( "CONFIRM", to_translation( "Confirm your selection" ).translated() );
+        add_action_desc( "CONFIRM", _( "Confirm your selection" ) );
         add_action_desc( "TOGGLE_FAVORITE", pgettext( "crafting gui", "Favorite" ) );
         add_action_desc( "HELP_KEYBINDINGS", pgettext( "crafting gui", "Keybindings" ) );
         keybinding_tips = foldstring( enumerate_as_string( act_descs, enumeration_conjunction::none ),
