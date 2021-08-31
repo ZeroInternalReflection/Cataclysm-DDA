@@ -124,7 +124,7 @@ void item_contents_ui::draw_item_list()
     int istart = 0;
     int iend = 0;
     if( max_items > data_lines ) {
-        if( selected_item_line <= item_min + data_lines /2 ) {
+        if( selected_item_line <= item_min + data_lines / 2 ) {
             istart = item_min;
             iend = item_min + data_lines;
         } else if( selected_item_line >= max_items - data_lines / 2 ) {
@@ -202,7 +202,7 @@ void item_contents_ui::execute()
         const point item_info( wStart + ui_width - item_info_width, head_height );
 
         w_item_info = catacurses::newwin( item_info_height, item_info_width,
-                                         item_info );
+                                          item_info );
 
         if( spopup ) {
             spopup->window( w_data, point( 4, catacurses::getmaxy( w_data ) - 2 ),
