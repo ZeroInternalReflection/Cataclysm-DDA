@@ -99,7 +99,7 @@ void item_contents_ui::draw_footer()
 
         spopup->query_string( /*loop=*/false, /*draw_only=*/true );
     } else {
-        if( vFilteredItemList.size() > 0 || !filter_string.empty() ) {
+        if( !vFilteredItemList.empty() || !filter_string.empty() ) {
             std::string text = string_format( filter_string.empty() ? _( "[%s] Filter" ) : _( "[%s] Filter: " ),
                                               ctxt.get_desc( "INVENTORY_FILTER" ) );
 
