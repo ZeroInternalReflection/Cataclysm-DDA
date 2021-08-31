@@ -43,6 +43,7 @@ void item_contents_ui::draw_borders()
         mvwputch( w_head, point( 0, i ), BORDER_COLOR, LINE_XOXO );
         mvwputch( w_head, point( ui_width - 1, i ), BORDER_COLOR, LINE_XOXO );
     }
+    // NOLINTNEXTLINE(cata-use-named-point-constants)
     mvwputch( w_head, point( 0, 0 ), BORDER_COLOR, LINE_OXXO ); // Upper Left
     mvwputch( w_head, point( ui_width - 1, 0 ), BORDER_COLOR, LINE_OOXX ); // Upper Right
     mvwputch( w_head, point( ui_width - 1, head_height - 1 ), BORDER_COLOR, LINE_XOXX ); // -|
@@ -113,6 +114,7 @@ void item_contents_ui::draw_footer()
 
 void item_contents_ui::draw_header()
 {
+    // NOLINTNEXTLINE(cata-use-named-point-constants)
     trim_and_print( w_head, point( 1, 1 ), ui_width, c_white, pContaining_item->display_name() );
 }
 
