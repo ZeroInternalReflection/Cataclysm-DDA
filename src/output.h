@@ -961,17 +961,21 @@ class multiline_list
         std::vector<int> entry_sizes;
         int total_length;
         std::map<size_t, inclusive_rectangle<point>> entry_map;
+        bool mouseover_selection;
 
         std::unique_ptr<scrollbar> list_sb;
         catacurses::window &w;
 
         void add_entry( const multiline_list_entry &entry );
         void create_entry_prep();
-        void print_line( int entry, const point &start, const std::string &text );
+        void print_line( int entry, const point &start, const std::string &text, int active_list_id );
 
     public:
+        int list_id; //Used to differentiate input  when multiple multiline_lists are visible at once
+
         explicit multiline_list( catacurses::window &win ) : w( win ) {
             list_sb = std::make_unique<scrollbar>();
+            list_id = 0;
         }
 
         void activate_entry( size_t entry_pos, bool exclusive );
@@ -995,11 +999,11 @@ class multiline_list
         int get_entry_from_offset( int offset );
         int get_offset_from_entry();
         int get_offset_from_entry( int entry );
-        bool handle_navigation( std::string &action, input_context &ctxt );
-        void print_entries();
+        bool handle_navigation( std::string &action, input_context &ctxt, int active_list_id = 0 );
+        void print_entries( int active_list_id = 0 );
         void set_entry_pos( int entry_pos, bool looping );
         void set_offset_pos( int offset_pos, bool update_selection );
-        void set_up_navigation( input_context &ctxt );
+        void set_up_navigation( input_context &ctxt, bool _mouseover_selection = true );
 };
 
 /** A simple scrolling view onto some text.  Given a window, it will use the

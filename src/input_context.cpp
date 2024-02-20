@@ -258,10 +258,17 @@ std::string input_context::get_desc( const std::string &action_descriptor,
         return pgettext( "keybinding", "None applicable" );
     }
 
+    const std::string screen_reader_mode = get_option<std::string>( "SCREEN_READER_MODE" );
     const std::string separator = inputs_to_show.size() > 2 ? _( ", or " ) : _( " or " );
     std::string rval;
     for( size_t i = 0; i < inputs_to_show.size(); ++i ) {
-        rval += inputs_to_show[i].long_description();
+        std::string description = inputs_to_show[i].long_description();
+        if( screen_reader_mode == "orca" ) {
+            if( description == "?" ) {
+                description = _( "Question mark" );
+            }
+        }
+        rval += description;
 
         // We're generating a list separated by "," and "or"
         if( i + 2 == inputs_to_show.size() ) {
@@ -270,6 +277,7 @@ std::string input_context::get_desc( const std::string &action_descriptor,
             rval += ", ";
         }
     }
+
     return rval;
 }
 

@@ -596,9 +596,11 @@ std::string hilite_string( const std::string &text )
         pos += new_tag.length();
         ++color_tag_count;
     }
-    if( color_tag_count < 1 ) {
+    // Assume c_white for incompletely-tagged strings and untagged strings
+    if( color_tag_count < 1 || highlighted.substr( 0, 1 ) != "<" ) {
         highlighted = colorize( highlighted, h_white );
     }
+
     return highlighted;
 }
 

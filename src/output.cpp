@@ -1972,8 +1972,14 @@ int multiline_list::get_offset_from_entry( const int entry )
     return offset;
 }
 
-bool multiline_list::handle_navigation( std::string &action, input_context &ctxt )
+bool multiline_list::handle_navigation( std::string &action, input_context &ctxt,
+                                        int active_list_id )
 {
+    // Ignore input if the list is empty
+    if( entries.empty() || entry_sizes.empty() ) {
+        return false;
+    }
+
     std::optional<point> coord = ctxt.get_coordinates_text( catacurses::stdscr );
     inclusive_rectangle<point> mouseover_area( point( catacurses::getbegx( w ),
             catacurses::getbegy( w ) ), point( getmaxx( w ) + catacurses::getbegx( w ),
@@ -1993,17 +1999,17 @@ bool multiline_list::handle_navigation( std::string &action, input_context &ctxt
 
     if( list_sb->handle_dragging( action, coord, offset_position ) ) {
         // No action required
-    } else if( action == "HOME" ) {
+    } else if( active_list_id == list_id && action == "HOME" ) {
         set_entry_pos( 0, false );
-    } else if( action == "END" ) {
+    } else if( active_list_id == list_id && action == "END" ) {
         set_entry_pos( entries.size() - 1, false );
-    } else if( action == "PAGE_DOWN" ) {
+    } else if( active_list_id == list_id && action == "PAGE_DOWN" ) {
         set_offset_pos( offset_position + getmaxy( w ), true );
-    } else if( action == "PAGE_UP" ) {
+    } else if( active_list_id == list_id && action == "PAGE_UP" ) {
         set_offset_pos( offset_position - getmaxy( w ), true );
-    } else if( action == "UP" ) {
+    } else if( active_list_id == list_id && action == "UP" ) {
         set_entry_pos( entry_position - 1, true );
-    } else if( action == "DOWN" ) {
+    } else if( active_list_id == list_id && action == "DOWN" ) {
         set_entry_pos( entry_position + 1, true );
     } else if( action == "SCROLL_UP" && mouse_in_window ) {
         // Scroll selection, but only adjust view as if we're scrolling offset
@@ -2020,7 +2026,8 @@ bool multiline_list::handle_navigation( std::string &action, input_context &ctxt
             action = "CONFIRM";
             mouseover_delay_end = std::chrono::steady_clock::now() + base_mouse_delay;
         }
-    } else if( action == "MOUSE_MOVE" && mouse_in_window && local_coord.has_value() ) {
+    } else if( mouseover_selection && action == "MOUSE_MOVE" && mouse_in_window &&
+               local_coord.has_value() ) {
         if( std::chrono::steady_clock::now() > mouseover_delay_end ) {
             if( mouseover_position >= 0 ) {
                 entry_position = mouseover_position;
@@ -2043,7 +2050,7 @@ bool multiline_list::handle_navigation( std::string &action, input_context &ctxt
     return true;
 }
 
-void multiline_list::print_entries()
+void multiline_list::print_entries( const int active_list_id )
 {
     werase( w );
     entry_map.clear();
@@ -2051,10 +2058,14 @@ void multiline_list::print_entries()
     int ycurrent = 0;
     int current_offset = 0;
     int available_height = getmaxy( w );
+    point cursor_pos = point( getcurx( w ), getcury( w ) );
     for( size_t i = 0; i < entries.size(); ++i ) {
+        if( static_cast<int>( i ) == entry_position && active_list_id == list_id ) {
+            cursor_pos = point( 2, ycurrent );
+        }
         for( size_t j = 0; j < entries[i].folded_text.size(); ++j ) {
             if( current_offset >= offset_position && current_offset < offset_position + available_height ) {
-                print_line( i, point( 2, ycurrent ), entries[i].folded_text[j] );
+                print_line( i, point( 2, ycurrent ), entries[i].folded_text[j], active_list_id );
                 ++ycurrent;
             }
             ++current_offset;
@@ -2068,10 +2079,14 @@ void multiline_list::print_entries()
     .viewport_size( getmaxy( w ) )
     .apply( w );
 
+    /* If this list is active this will set the cursor for screen readers
+     * Otherwise, it will restore the previous cursor position */
+    wmove( w, cursor_pos );
     wnoutrefresh( w );
 }
 
-void multiline_list::print_line( int entry, const point &start, const std::string &text )
+void multiline_list::print_line( int entry, const point &start, const std::string &text,
+                                 const int active_list_id )
 {
     nc_color cur_color = c_light_gray;
     std::string output_text = text;
@@ -2079,7 +2094,7 @@ void multiline_list::print_line( int entry, const point &start, const std::strin
         cur_color = c_light_green;
         output_text = colorize( remove_color_tags( output_text ), cur_color );
     }
-    if( entry == entry_position ) {
+    if( entry == entry_position && active_list_id == list_id ) {
         output_text = hilite_string( output_text );
     }
     print_colored_text( w, start, cur_color, c_light_gray, output_text );
@@ -2089,20 +2104,24 @@ void multiline_list::print_line( int entry, const point &start, const std::strin
 
 void multiline_list::set_entry_pos( const int entry_pos, const bool looping = false )
 {
-    if( looping && !entries.empty() ) {
-        int new_position = entry_pos;
-        const int list_size = static_cast<int>( entries.size() );
-        if( new_position < 0 ) {
-            // Ensure we have a positive position index by adding a multiple of the list_size to it
-            new_position += list_size * ( ( std::abs( new_position ) / list_size ) + 1 );
-        }
-        entry_position = new_position % static_cast<int>( entries.size() );
+    if( entries.empty() || entry_sizes.empty() ) {
+        debugmsg( "List has no entries, unable to set current entry to %i.", entry_pos );
     } else {
-        entry_position = clamp( entry_pos, 0, static_cast<int>( entries.size() ) - 1 );
+        if( looping ) {
+            int new_position = entry_pos;
+            const int list_size = static_cast<int>( entries.size() );
+            if( new_position < 0 ) {
+                // Ensure we have a positive position index by adding a multiple of the list_size to it
+                new_position += list_size * ( ( std::abs( new_position ) / list_size ) + 1 );
+            }
+            entry_position = new_position % static_cast<int>( entries.size() );
+        } else {
+            entry_position = clamp( entry_pos, 0, static_cast<int>( entries.size() ) - 1 );
+        }
+        int available_space = getmaxy( w ) - entry_sizes[entry_position];
+        set_offset_pos( get_offset_from_entry() - available_space / 2, false );
+        mouseover_delay_end = std::chrono::steady_clock::now() + base_mouse_delay / mouseover_accel_counter;
     }
-    int available_space = getmaxy( w ) - entry_sizes[entry_position];
-    set_offset_pos( get_offset_from_entry() - available_space / 2, false );
-    mouseover_delay_end = std::chrono::steady_clock::now() + base_mouse_delay / mouseover_accel_counter;
 }
 
 void multiline_list::set_offset_pos( const int offset_pos, const bool update_selection )
@@ -2131,7 +2150,7 @@ void multiline_list::set_offset_pos( const int offset_pos, const bool update_sel
     mouseover_delay_end = std::chrono::steady_clock::now() + base_mouse_delay / mouseover_accel_counter;
 }
 
-void multiline_list::set_up_navigation( input_context &ctxt )
+void multiline_list::set_up_navigation( input_context &ctxt, const bool _mouseover_selection )
 {
     list_sb->set_draggable( ctxt );
     ctxt.register_updown();
@@ -2143,6 +2162,7 @@ void multiline_list::set_up_navigation( input_context &ctxt )
     ctxt.register_action( "SCROLL_DOWN" );
     ctxt.register_action( "SCROLL_UP" );
     ctxt.register_action( "SELECT" );
+    mouseover_selection = _mouseover_selection;
 }
 
 void scrolling_text_view::set_text( const std::string &text, const bool scroll_to_top )
@@ -2206,6 +2226,7 @@ void scrolling_text_view::draw( const nc_color &base_color )
                             text_[line_num + offset_] );
     }
 
+    wmove( w_, point_zero ); // Set cursor to beginning of text for screen readers
     wnoutrefresh( w_ );
 }
 

@@ -1688,37 +1688,22 @@ void set_traits( tab_manager &tabs, avatar &u, pool_type pool )
             for( int i = start; i < end; i++ ) {
                 const trait_and_var &cursor = *sorted_traits[iCurrentPage][i];
                 const trait_id &cur_trait = cursor.trait;
-                if( current == i && iCurrentPage == iCurWorkingPage ) {
-                    int points = cur_trait->points;
-                    bool negativeTrait = points < 0;
-                    if( negativeTrait ) {
-                        points *= -1;
-                    }
-                    if( pool != pool_type::FREEFORM ) {
-                        mvwprintz( w, point( full_string_length + 3, 3 ), col_tr,
-                                   n_gettext( "%s %s %d point", "%s %s %d points", points ),
-                                   cursor.name(),
-                                   negativeTrait ? _( "earns" ) : _( "costs" ),
-                                   points );
-                    }
-                    if( details_recalc ) {
-                        details.set_text( colorize( cursor.desc(), col_tr ) );
-                        details_recalc = false;
-                    }
-                }
 
                 nc_color cLine = col_off_pas;
+                std::string color_descriptor = "";
                 if( iCurWorkingPage == iCurrentPage ) {
                     cLine = col_off_act;
                     if( current == i ) {
                         cLine = hi_off;
                         if( u.has_conflicting_trait( cur_trait ) ) {
                             cLine = hilite( c_dark_gray );
+                            color_descriptor = _( " - unavailable" );
                         } else if( u.has_trait( cur_trait ) ) {
                             if( !cur_trait->variants.empty() && !u.has_trait_variant( cursor ) ) {
                                 cLine = hilite( c_dark_gray );
                             } else {
                                 cLine = hi_on;
+                                color_descriptor = _( " - active" );
                             }
                         }
                     } else {
@@ -1735,7 +1720,6 @@ void set_traits( tab_manager &tabs, avatar &u, pool_type pool )
                     }
                 } else if( u.has_trait( cur_trait ) ) {
                     cLine = col_on_pas;
-
                 } else if( u.has_conflicting_trait( cur_trait ) ||
                            get_scenario()->is_forbidden_trait( cur_trait ) ) {
                     cLine = c_light_gray;
@@ -1744,11 +1728,39 @@ void set_traits( tab_manager &tabs, avatar &u, pool_type pool )
                 const int cur_line_y = iHeaderHeight + i - start;
                 const int cur_line_x = 2 + iCurrentPage * page_width;
                 const point opt_pos( cur_line_x, cur_line_y );
-                if( iCurWorkingPage == iCurrentPage && current == i ) {
+                static_cast<void>( ui );
+                /*if( iCurWorkingPage == iCurrentPage && current == i ) {
                     ui.set_cursor( w, opt_pos );
+                }*/
+                if( get_option<std::string>( "SCREEN_READER_MODE" ) != "orca" ) {
+                    mvwprintz( w, opt_pos, cLine,
+                               utf8_truncate( cursor.name(), page_width - 2 ) );
                 }
-                mvwprintz( w, opt_pos, cLine,
-                           utf8_truncate( cursor.name(), page_width - 2 ) );
+
+                if( current == i && iCurrentPage == iCurWorkingPage ) {
+                    int points = cur_trait->points;
+                    bool negativeTrait = points < 0;
+                    if( negativeTrait ) {
+                        points *= -1;
+                    }
+                    if( pool != pool_type::FREEFORM ) {
+                        mvwprintz( w, point( full_string_length + 3, 3 ), col_tr,
+                                   n_gettext( "%s %s %d point", "%s %s %d points", points ),
+                                   cursor.name(),
+                                   negativeTrait ? _( "earns" ) : _( "costs" ),
+                                   points );
+                    }
+                    if( details_recalc ) {
+                        if( get_option<std::string>( "SCREEN_READER_MODE" ) == "orca" ) {
+                            std::string assembled = string_format( "%1s%2s:\n", cursor.name(), color_descriptor );
+                            assembled.append( cursor.desc() );
+                            details.set_text( colorize( assembled, col_tr ) );
+                        } else {
+                            details.set_text( colorize( cursor.desc(), col_tr ) );
+                        }
+                        details_recalc = false;
+                    }
+                }
             }
 
             trait_sbs[iCurrentPage].offset_x( page_width * iCurrentPage )
@@ -1846,6 +1858,7 @@ void set_traits( tab_manager &tabs, avatar &u, pool_type pool )
                                         traits_size[iCurWorkingPage], true ) ) {
             // No additional action required
         } else if( action == "CONFIRM" ) {
+            details_recalc = true;
             int inc_type = 0;
             const trait_id cur_trait = sorted_traits[iCurWorkingPage][iCurrentLine[iCurWorkingPage]]->trait;
             const std::string variant = sorted_traits[iCurWorkingPage][iCurrentLine[iCurWorkingPage]]->variant;
@@ -2337,9 +2350,10 @@ void set_profession( tab_manager &tabs, avatar &u, pool_type pool )
                         sorted_profs[i] == sorted_profs[cur_id] ? hilite( c_light_green ) : COL_SKILL_USED );
             }
             const point opt_pos( 2, iHeaderHeight + i - iStartPos );
-            if( i == cur_id ) {
+            static_cast<void>( ui );
+            /*if( i == cur_id ) {
                 ui.set_cursor( w, opt_pos );
-            }
+            }*/
             mvwprintz( w, opt_pos, col,
                        sorted_profs[i]->gender_appropriate_name( u.male ) );
         }
@@ -3335,11 +3349,14 @@ void set_scenario( tab_manager &tabs, avatar &u, pool_type pool )
                         sorted_scens[i] == sorted_scens[cur_id] ? hilite( c_light_green ) : COL_SKILL_USED );
             }
             const point opt_pos( 2, iHeaderHeight + i - iStartPos );
-            if( i == cur_id ) {
+            static_cast<void>( ui );
+            /*if( i == cur_id ) {
                 ui.set_cursor( w, opt_pos );
+            }*/
+            if( get_option<std::string>( "SCREEN_READER_MODE" ) != "orca" ) {
+                mvwprintz( w, opt_pos, col,
+                           sorted_scens[i]->gender_appropriate_name( u.male ) );
             }
-            mvwprintz( w, opt_pos, col,
-                       sorted_scens[i]->gender_appropriate_name( u.male ) );
         }
 
         list_sb.offset_x( 0 )

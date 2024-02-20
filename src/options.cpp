@@ -1945,6 +1945,82 @@ void options_manager::add_options_interface()
              to_translation( "If true, highlight unread recipes to allow tracking of newly learned recipes." ),
              true
            );
+
+        add( "SCREEN_READER_MODE", page_id, to_translation( "Screen reader mode" ),
+             to_translation( "On supported UI screens, tweaks display of text to optimize for the selected screen reader software." ),
+        {
+            { "none", to_translation( "N/A" ) },
+            { "orca", to_translation( "orca" ) } // Shouldn't actually be marked for translation.  It's the name of a piece of software
+            /* In supported UI screens, tweaks the way text is displayed to optimize for screen readers.  Testing based on orca 45.2-1
+             * Some examples of how and why:
+             *
+             * TEXT COLOR
+             * It's fairly common in the UI to use text color to convey information.  For instance, a currently-active item in a list
+             * might display as green, while one that cannot be selected is presented in dark gray.  Orca does not give text color when
+             * reading the screen, so if that text colour provides information required by the player, the text should be modified to
+             * provide that information. e.g.:
+             * <color_c_green>Evacuee</color> turns into <color_c_green>Evacuee - active</color>
+             * The dash looks a bit funny, but it takes a lot less time for orca to read than "(active)"
+             *
+             * UI LAYOUT AND CURSOR POSITION
+             * Orca struggles with differentiating multiple columns of text.  As an example, a UI screen with three columns listing
+             * things and a pane at the bottom with details:
+                 * _______________________________
+                 * |List 1  | List 2  | List 3   |
+                 * |>Item 1 | Item 2-1| Item 3-1 |
+                 * |Item 2  | Item 2-2| Item 3-2 |
+                 * |Item 3  |                    |
+                 * -------------------------------
+                 * | Details relating to item 1  |
+                 * | lorem ipsum                 |
+                 * -------------------------------
+                 *
+                 * In this layout, orca will read all the list panels of text at the same time, line by line, resulting in a confusing
+                 * mess. So, on implementation, attempt to do this:
+                 * _______________________________
+                 * |List 1  | List 2  | List 3   |
+                 * |>Item 1 | Item 2-1| Item 3-1 |
+                 * |Item 2  | Item 2-2| Item 3-2 |
+                 * |Item 3  |                    |
+                 * -------------------------------
+                 * |XList 1 - Item 1             |
+                 * | Details relating to item 1  |
+                 * -------------------------------
+                 * That is, set the cursor position to the X at the top left of the 'details' pane and pull the current
+                 * heading/selected item into the text of that panel.  This allows the user to scroll through each list
+                 * line-by-line, hearing only what they want to hear.
+             *
+             * In this other common UI layout, with one pane for a list of items and a second pane for details on
+             * the currently-selected item, orca is unable to differentiate between the two panes, and will mix list
+             * items into the middle of the description of Item 1.
+                 * _______________________________
+                 * |List    | Details relating to|
+                 * |>Item 1 | item 1.  Lorem     |
+                 * |Item 2  | ipsum              |
+                 * |Item 3  |                    |
+                 * |Item 4  |                    |
+                 * |Item 5  |                    |
+                 * -------------------------------
+                *
+                * The solution to this is to ensure that "Item 1" appears in the details for item 1, set the cursor to
+                * top left of the details pane, and to _not_ draw the list of items:
+                 * _______________________________
+                 * |        |XItem 1 - Details   |
+                 * |        | telating to item 1.|
+                 * |        | Lorem ipsum        |
+                 * |        |                    |
+                 * |        |                    |
+                 * |        |                    |
+                 * -------------------------------
+             * In this implementation, orca will read the details cleanly, and the user is free to scroll to the desired line
+                 *
+             * STANDALONE CHARACTERS
+                 * Certain characters combinations are not read, or are not clearly annunciated by orca.  For example,
+             * the question mark in [?] is ignored.  This mode tells the input_context to replace ? and similar punctuation with
+                 * translated text
+                 */
+        },
+        "none" );
     } );
 
     add_empty_line();
